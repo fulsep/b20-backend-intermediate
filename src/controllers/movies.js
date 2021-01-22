@@ -85,7 +85,8 @@ exports.createMovies = (req, res) => {
     const movieData = {
       name: data.name,
       releaseDate: data.releaseDate,
-      picture: (req.file && req.file.path) || null
+      picture: (req.file && req.file.path) || null,
+      createdBy: req.userData.id
     }
     const initialResult = await movieModel.createMoviesAsync(movieData)
     if (initialResult.affectedRows > 0) {
@@ -118,7 +119,7 @@ exports.deleteMovie = async (req, res) => {
   const { id } = req.params
   const initialResult = await movieModel.getMovieByIdAsync(id)
   if (initialResult.length > 0) {
-    const results = await movieModel.getMovieByIdAsync(id)
+    const results = await movieModel.deleteMovieByIdAsync(id)
     if (results) {
       return res.json({
         success: true,
