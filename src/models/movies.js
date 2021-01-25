@@ -52,6 +52,37 @@ exports.getMoviesByCondition = (cond, cb) => {
   console.log(query.sql)
 }
 
+exports.getMoviesByConditionAsync = (cond) => {
+  return new Promise((resolve, reject) => {
+    const query = db.query(`
+    SELECT * FROM
+    movies WHERE name LIKE "%${cond.search}%"
+    ORDER BY ${cond.sort} ${cond.order}
+    LIMIT ${cond.dataLimit} OFFSET ${cond.offset}
+    `, (err, res, field) => {
+      if (err) reject(err)
+      // console.log(field)
+      resolve(res)
+    })
+    console.log(query.sql)
+  })
+}
+
+exports.getMoviesCountByConditionAsync = (cond) => {
+  return new Promise((resolve, reject) => {
+    const query = db.query(`
+    SELECT COUNT(name) as totalData FROM
+    movies WHERE name LIKE "%${cond.search}%"
+    ORDER BY ${cond.sort} ${cond.order}
+    `, (err, res, field) => {
+      if (err) reject(err)
+      // console.log(field)
+      resolve(res)
+    })
+    console.log(query.sql)
+  })
+}
+
 exports.getMovieById = (id, cb) => {
   const query = db.query(`
     SELECT * FROM movies WHERE id=${id}
@@ -81,8 +112,8 @@ exports.getMovieByIdWithGenreAsync = (id) => {
     const query = db.query(`
     SELECT m.id, m.name, m.releaseDate, g.name as genreName
     FROM movies m
-    INNER JOIN movie_genres mg ON m.id=mg.idMovie
-    INNER JOIN genres g ON g.id=mg.idGenre
+    LEFT JOIN movie_genres mg ON m.id=mg.idMovie
+    LEFT JOIN genres g ON g.id=mg.idGenre
     WHERE m.id=${id}
   `, (err, res, field) => {
       if (err) reject(err)

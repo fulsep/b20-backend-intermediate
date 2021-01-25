@@ -4,9 +4,11 @@ const genreModel = require('../models/genres')
 const movieGenreModel = require('../models/movieGenres')
 const multer = require('multer')
 const upload = require('../helpers/upload').single('picture')
+const { APP_URL } = process.env
+const qs = require('querystring')
 
-exports.listMovies = (req, res) => {
-  const cond = req.query
+exports.listMovies = async (req, res) => {
+  const cond = { ...req.query }
   cond.search = cond.search || ''
   cond.page = Number(cond.page) || 1
   cond.limit = Number(cond.limit) || 5
@@ -15,29 +17,58 @@ exports.listMovies = (req, res) => {
   cond.sort = cond.sort || 'id'
   cond.order = cond.order || 'ASC'
 
-  movieModel.getMoviesByCondition(cond, results => {
-    return res.json({
-      success: true,
-      message: 'List of all Movies',
-      results
-    })
+  const pageInfo = {
+    nextLink: null,
+    prevLink: null,
+    totalData: 0,
+    totalPage: 0,
+    currentPage: 0
+  }
+
+  const countData = await movieModel.getMoviesCountByConditionAsync(cond)
+  pageInfo.totalData = countData[0].totalData
+  pageInfo.totalPage = Math.ceil(pageInfo.totalData / cond.limit)
+  pageInfo.currentPage = cond.page
+  const nextQuery = qs.stringify({
+    ...req.query,
+    page: cond.page + 1
+  })
+  const prevQuery = qs.stringify({
+    ...req.query,
+    page: cond.page - 1
+  })
+  pageInfo.nextLink = cond.page < pageInfo.totalPage ? APP_URL.concat(`/movies?${nextQuery}`) : null
+  pageInfo.prevLink = cond.page > 1 ? APP_URL.concat(`/movies?${prevQuery}`) : null
+
+  const results = await movieModel.getMoviesByConditionAsync(cond)
+
+  return res.json({
+    success: true,
+    message: 'List of all Movies',
+    results,
+    pageInfo
   })
 }
 
-exports.detailMovies = (req, res) => {
+exports.detailMovies = async (req, res) => {
   const { id } = req.params
-  movieModel.getMovieById(id, results => {
-    if (results.length > 0) {
-      return res.json({
-        success: true,
-        message: 'Details of Movie',
-        results: results[0]
-      })
-    }
-    return res.status(400).json({
-      success: false,
-      message: 'Movies not exists'
+  const results = await movieModel.getMovieByIdWithGenreAsync(id)
+  console.log(results)
+  if (results.length > 0) {
+    return res.json({
+      success: true,
+      message: 'Details of Movie',
+      results: {
+        id: results[0].id,
+        name: results[0].name,
+        releaseDate: results[0].releaseDate,
+        genreName: results.map(({ genreName }) => genreName)
+      }
     })
+  }
+  return res.status(400).json({
+    success: false,
+    message: 'Movies not exists'
   })
 }
 
